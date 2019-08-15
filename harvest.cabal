@@ -1,0 +1,31 @@
+
+name:           harvest
+version:        0.1
+license:        MIT
+author:         Ben Lippmeier <benl@ouroborus.net>
+maintainer:     Ben Lippmeier <benl@ouroborus.net>
+cabal-version:  > 1.8
+synopsis:       Direct implementations of machine learning algorithms.
+build-type:     Simple
+
+library
+ hs-source-dirs: src/harvest
+
+ build-depends:
+        base, containers
+
+ exposed-modules:
+        Harvest.Concept.FindS
+
+
+executable harvest-finds
+ hs-source-dirs: src/main/finds
+ main-is:        Main.hs
+
+ build-depends:
+        base, text, comma, harvest
+
+ extensions:
+        OverloadedStrings
+
+
