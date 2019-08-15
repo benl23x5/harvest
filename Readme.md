@@ -13,4 +13,9 @@ set of training data. We start with the most specific hypothesis, which is
 that no attribute value is acceptable, then progressively weaken the
 hypothesis so that it covers all positive training examples.
 
+```
+ $ harvest-finds src/main/finds/data/watersport.csv
+ Hypothesis [Exact "sunny",Exact "warm",Any,Exact "strong",Any,Any]
+```
+
 From Machine Learning, Tom M. Mitchell, 1997
