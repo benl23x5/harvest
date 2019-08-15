@@ -14,7 +14,7 @@ that no attribute value is acceptable, then progressively weaken the
 hypothesis so that it covers all positive training examples.
 
 ```
- $ harvest-finds src/main/finds/data/watersport.csv
+ $ harvest-finds data/discrete/watersport.csv
  Hypothesis [Exact "sunny",Exact "warm",Any,Exact "strong",Any,Any]
 ```
 
