@@ -72,17 +72,16 @@ runClassify config lsRows
         putStrLn $ printf "train instances = %d" (length instsTrain)
         putStrLn $ printf "test  instances = %d" (length instsTest)
 
-
-        -- Initialize the model and write it out.
-        let modelInit = H.initModel 42 (configInitWeight config) ssFeatures
-        T.writeFile "output/model-0-init.txt"
-         $ H.showModel modelInit
+        -- Initialize the model to have small random weights.
+        let modelInit
+                = H.initModel 42 (configInitWeight config) ssFeatures
 
         -- Enter the training loop.
-        T.putStrLn H.scoreMetricsHeader
+        T.putStrLn
+         $ " iter" <> H.scoreMetricsHeader
         loopTrain
                 (configLearnRate config)
-                20
+                (configIterations config)
                 instsTrain instsTest modelInit
 
 
@@ -116,7 +115,9 @@ loopTrain fLearnRate iIterMax instsTrain instsTest model_
 
         -- Print score metrics to console.
         let metrics  = H.takeScoreMetrics exScores
-        T.putStrLn $ H.showScoreMetrics metrics
+        T.putStrLn
+         $  (T.pack $ printf "% 5d" (iIterMax - i))
+         <> H.showScoreMetrics metrics
 
         -- Update the model.
         let model' = foldl' (H.updateModel fLearnRate) model instsTrain

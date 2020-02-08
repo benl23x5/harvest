@@ -11,7 +11,8 @@ data Config
         , configLabelTrue       :: Text
         , configTestRatio       :: Float
         , configLearnRate       :: Float
-        , configInitWeight      :: Float }
+        , configInitWeight      :: Float
+        , configIterations      :: Int }
         deriving Show
 
 
@@ -22,7 +23,8 @@ configDefault
         , configLabelTrue       = "true"
         , configTestRatio       = 0.2
         , configLearnRate       = 0.00001
-        , configInitWeight      = 0.001  }
+        , configInitWeight      = 0.001
+        , configIterations      = 10 }
 
 
 parseArgs :: [String] -> Config -> IO Config
@@ -48,6 +50,11 @@ parseArgs ("-learn-rate" : sRate : rest) config
  | Just fRate <- readMaybe sRate
  = parseArgs rest
  $ config { configLearnRate = fRate }
+
+parseArgs ("-iterations" : sIter : rest) config
+ | Just iIter <- readMaybe sIter
+ = parseArgs rest
+ $ config { configIterations = iIter }
 
 parseArgs (fileName@(c : _) : rest) config
  | c /= '-'
