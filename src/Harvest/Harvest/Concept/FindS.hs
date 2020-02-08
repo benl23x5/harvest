@@ -11,6 +11,7 @@ module Harvest.Concept.FindS
 where
 import qualified Data.List      as L
 
+
 -- | A constraint on a particular value.
 data Constraint a
         = None          -- ^ No value is acceptable.
