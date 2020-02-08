@@ -10,22 +10,36 @@ build-type:     Simple
 
 library
  hs-source-dirs: src/harvest
-
- build-depends:
-        base, containers
+ build-depends:  base, text, containers, extra, comma, random
+ ghc-options: -O2
+ extensions:
+        ScopedTypeVariables,
+        OverloadedStrings,
+        ParallelListComp,
+        PatternGuards,
+        BangPatterns
 
  exposed-modules:
         Harvest.Concept.FindS
+        Harvest.Neural.Perceptron
 
 
 executable harvest-finds
  hs-source-dirs: src/main/finds
- main-is:        Main.hs
+ main-is:       Main.hs
+ ghc-options:   -O2
+ build-depends: base, text, comma, harvest
+ extensions:    OverloadedStrings
 
- build-depends:
-        base, text, comma, harvest
-
+executable harvest-perceptron
+ hs-source-dirs: src/main/perceptron
+ main-is:       Main.hs
+ ghc-options:   -O2
+ build-depends: base, text, containers, extra, comma, harvest, random
  extensions:
-        OverloadedStrings
-
+        ScopedTypeVariables,
+        OverloadedStrings,
+        ParallelListComp,
+        PatternGuards,
+        BangPatterns
 
