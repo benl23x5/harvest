@@ -1,5 +1,6 @@
 
--- | Perceptron classifier.
+-- | Use of a Perceptron for binary classification of categorical data.
+--     Files of current model and scores are written to "./output"
 import qualified Harvest.Neural.Perceptron as H
 
 import Data.Text                        (Text)
@@ -21,26 +22,34 @@ import qualified System.Random          as Random
 main
  = do   args <- System.getArgs
         case args of
-         [fileName]     -> runMain fileName
-         _              -> error "usage: harvest-perceptron FILE.csv"
+         [sLabelTrue, sTestRatio, fileName]
+            -> runMain (T.pack sLabelTrue) (read sTestRatio) fileName
+         _  -> error "usage: harvest-perceptron <label:String> <ratio:Float> FILE.csv"
 
-runMain fileName
+runMain sLabelTrue fTestRatio fileName
  = do   file    <- T.readFile fileName
         case Comma.comma file of
          Left err  -> error err
-         Right ls  -> runCategorize ls
+         Right ls  -> runClassify sLabelTrue fTestRatio ls
 
 
 ---------------------------------------------------------------------------------------------------
-runCategorize :: [[Text]] -> IO ()
-runCategorize lsRows
+-- Run the classifier.
+runClassify
+        :: Text         -- ^ Label value to assign to 'True'
+        -> Float        -- ^ Ratio of instances to use for testing vs training.
+        -> [[Text]]     -- ^ Rows from the CSV file, first row is header.
+        -> IO ()
+
+runClassify sLabelTrue fTestRatio lsRows
  = do
         -- Split off header row which gives attribute names.
         let lAttrs : lsInstances = lsRows
 
         -- Build list of all instances,
         --  where the category and features are named like
-        let insts = [ H.loadInstance lAttrs ssFeatures (sClass == "e")
+        let insts = [ H.loadInstance lAttrs ssFeatures
+                        (sClass == sLabelTrue)
                     | lsValues <- lsInstances
                     , let sClass : ssFeatures = lsValues ]
 
@@ -50,6 +59,14 @@ runCategorize lsRows
          $ T.unlines
          $ ("feature" : Set.toList ssFeatures)
 
+        -- Split the example instances into the training and holdout sets
+        let (instsTest, instsTrain)
+                = H.splitRatio 23 fTestRatio insts
+
+        putStrLn $ printf "train instances = %d" (length instsTrain)
+        putStrLn $ printf "test  instances = %d" (length instsTest)
+
+
         -- Initialize the model and write it out.
         let modelInit = H.initModel 42 ssFeatures
         T.writeFile "output/model-0-init.txt"
@@ -57,23 +74,34 @@ runCategorize lsRows
 
         -- Enter the training loop.
         T.putStrLn H.scoreMetricsHeader
-        loopTrain 0 20 insts modelInit
+        loopTrain 20 instsTrain instsTest modelInit
 
 
 ---------------------------------------------------------------------------------------------------
-loopTrain iIter iIterMax insts model
- | iIter > iIterMax = return ()
- | otherwise
- = do
+-- | Train an initial model.
+--     At each step we update the model using all the training instances,
+--     and print out the current performance on the test instances.
+loopTrain
+        :: Int          -- ^ Number of training iterations.
+        -> [H.Instance] -- ^ Instances to use for training.
+        -> [H.Instance] -- ^ Instances to use for testing.
+        -> H.Model      -- ^ Current model.
+        -> IO ()
+
+loopTrain iIterMax instsTrain instsTest model_
+ = loop 0 model_
+ where
+  loop !i !model
+   | i > iIterMax = return ()
+   | otherwise
+   = do
         -- Write out the current model.
-        T.writeFile (printf "output/model-%04d.txt" (iIter :: Int))
+        T.writeFile (printf "output/model-%04d.txt" i)
          $ H.showModel model
 
-        -- Score all the instances using the current model and write them out.
-        let exScores = map (H.makeExampleScore model) insts
-
-        -- Score the examples and write it out.
-        T.writeFile (printf "output/score-%04d.txt" (iIter :: Int))
+        -- Score the holdout instances using the current model and write them out.
+        let exScores = map (H.makeExampleScore model) instsTest
+        T.writeFile (printf "output/score-%04d.txt" i)
          $ T.unlines $ map H.showExampleScore $ exScores
 
         -- Print score metrics to console.
@@ -81,6 +109,5 @@ loopTrain iIter iIterMax insts model
         T.putStrLn $ H.showScoreMetrics metrics
 
         -- Update the model.
-        let model' = foldl' H.updateModel model insts
-        loopTrain (iIter + 1) iIterMax insts model'
-
+        let model' = foldl' H.updateModel model instsTrain
+        loop (i + 1) model'

@@ -3,6 +3,7 @@ module Harvest.Neural.Perceptron where
 import Data.Text                        (Text)
 import Data.Set                         (Set)
 import Data.Map                         (Map)
+import Data.Either
 import Data.List
 import Data.List.Extra
 import Text.Printf
@@ -46,6 +47,19 @@ showInstance (Instance bClass stFeatures)
  =  (T.pack $ show bClass)
  <> " | "
  <> T.intercalate " " (Set.toList stFeatures)
+
+
+-- | Split a list of things based on the given ratio.
+splitRatio :: Int -> Float -> [a] -> ([a], [a])
+splitRatio iSeed fRatio xs
+ = let  rgen    = Random.mkStdGen iSeed
+
+        rs :: [Float]
+                = take (length xs)
+                $ Random.randomRs (0, 1) rgen
+
+        es      = zipWith (\r x -> if r <= fRatio then Left x else Right x) rs xs
+   in   partitionEithers es
 
 
 ---------------------------------------------------------------------------------------------------
