@@ -40,6 +40,7 @@ main
          [fileName]     -> runMain fileName
          _              -> error "usage: harvest-finds FILE.csv"
 
+
 runMain fileName
  = do   file    <- T.readFile fileName
         case Comma.comma file of

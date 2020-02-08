@@ -1,7 +1,7 @@
 
 -- | FindS Concept Learning Algorithm.
 --
---   From Machine Learning, Tom M. Mitchell, 1997.
+--   From Machine Learning, Mitchell, 1997.
 --
 module Harvest.Concept.FindS
         ( Constraint    (..)
