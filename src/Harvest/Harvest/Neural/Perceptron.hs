@@ -76,16 +76,17 @@ data Model
 -- | Initialize the model with small random bias and weights.
 initModel
         :: Int          -- ^ Random seed.
+        -> Float        -- ^ Initial weight magnitude
         -> Set Text     -- ^ Set of all feature values.
         -> Model        -- ^ Initial model with small values for weights.
 
-initModel iSeed ssFeatures
+initModel iSeed fInitWeight ssFeatures
  = let  rgen      = Random.mkStdGen iSeed
         nFeatures = Set.size ssFeatures
 
         fBias : fsWeights
          = take (1 + nFeatures)
-         $ Random.randomRs (-0.01, 0.01) rgen
+         $ Random.randomRs (-fInitWeight, fInitWeight) rgen
 
         mpWeights = Map.fromList $ zip (Set.toList ssFeatures) fsWeights
 
@@ -109,8 +110,9 @@ classifyInstance model inst
 
 
 -- | Update the model based on the given instance.
-updateModel :: Model -> Instance -> Model
+updateModel :: Float -> Model -> Instance -> Model
 updateModel
+        fLearnRate
         model@(Model fBias mpWeights)
          inst@(Instance bClass stFeatures)
  = let
@@ -123,17 +125,14 @@ updateModel
         -- Difference between target and actual score.
         fDiff   = fTarget - fActual
 
-        -- Learning rate.
-        fRate   = 0.000001
-
         -- Update the bias.
-        fBias'  = fBias + fRate * fDiff * 1
+        fBias'  = fBias + fLearnRate * fDiff * 1
 
         -- Update the feature weights.
         mpWeights'
          = flip Map.mapWithKey mpWeights
          $ \k w -> let xi = if Set.member k stFeatures then 1 else -1
-                       wd = fRate * fDiff * xi
+                       wd = fLearnRate * fDiff * xi
                    in  w  + wd
 
    in   Model fBias' mpWeights'

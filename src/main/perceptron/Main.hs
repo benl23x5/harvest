@@ -2,6 +2,7 @@
 -- | Use of a Perceptron for binary classification of categorical data.
 --     Files of current model and scores are written to "./output"
 import qualified Harvest.Neural.Perceptron as H
+import Config
 
 import Data.Text                        (Text)
 import Data.Set                         (Set)
@@ -20,29 +21,32 @@ import qualified System.Random          as Random
 
 ---------------------------------------------------------------------------------------------------
 main
- = do   args <- System.getArgs
-        case args of
-         [sLabelTrue, sTestRatio, fileName]
-            -> runMain (T.pack sLabelTrue) (read sTestRatio) fileName
-         _  -> error "usage: harvest-perceptron <label:String> <ratio:Float> FILE.csv"
+ = do   args   <- System.getArgs
+        config <- parseArgs args configDefault
 
-runMain sLabelTrue fTestRatio fileName
+        case configFile config of
+         Just fileName -> runMain config fileName
+         _ -> error "usage: harvest-perceptron [FLAGS] FILE.csv"
+
+runMain config fileName
  = do   file    <- T.readFile fileName
         case Comma.comma file of
          Left err  -> error err
-         Right ls  -> runClassify sLabelTrue fTestRatio ls
+         Right ls  -> runClassify config ls
 
 
 ---------------------------------------------------------------------------------------------------
 -- Run the classifier.
 runClassify
-        :: Text         -- ^ Label value to assign to 'True'
-        -> Float        -- ^ Ratio of instances to use for testing vs training.
+        :: Config
         -> [[Text]]     -- ^ Rows from the CSV file, first row is header.
         -> IO ()
 
-runClassify sLabelTrue fTestRatio lsRows
+runClassify config lsRows
  = do
+        let sLabelTrue  = configLabelTrue config
+        let fTestRatio  = configTestRatio config
+
         -- Split off header row which gives attribute names.
         let lAttrs : lsInstances = lsRows
 
@@ -70,13 +74,16 @@ runClassify sLabelTrue fTestRatio lsRows
 
 
         -- Initialize the model and write it out.
-        let modelInit = H.initModel 42 ssFeatures
+        let modelInit = H.initModel 42 (configInitWeight config) ssFeatures
         T.writeFile "output/model-0-init.txt"
          $ H.showModel modelInit
 
         -- Enter the training loop.
         T.putStrLn H.scoreMetricsHeader
-        loopTrain 20 instsTrain instsTest modelInit
+        loopTrain
+                (configLearnRate config)
+                20
+                instsTrain instsTest modelInit
 
 
 ---------------------------------------------------------------------------------------------------
@@ -84,13 +91,14 @@ runClassify sLabelTrue fTestRatio lsRows
 --     At each step we update the model using all the training instances,
 --     and print out the current performance on the test instances.
 loopTrain
-        :: Int          -- ^ Number of training iterations.
+        :: Float        -- ^ Learning rate
+        -> Int          -- ^ Number of training iterations.
         -> [H.Instance] -- ^ Instances to use for training.
         -> [H.Instance] -- ^ Instances to use for testing.
         -> H.Model      -- ^ Current model.
         -> IO ()
 
-loopTrain iIterMax instsTrain instsTest model_
+loopTrain fLearnRate iIterMax instsTrain instsTest model_
  = loop 0 model_
  where
   loop !i !model
@@ -111,5 +119,5 @@ loopTrain iIterMax instsTrain instsTest model_
         T.putStrLn $ H.showScoreMetrics metrics
 
         -- Update the model.
-        let model' = foldl' H.updateModel model instsTrain
+        let model' = foldl' (H.updateModel fLearnRate) model instsTrain
         loop (i + 1) model'

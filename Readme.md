@@ -29,7 +29,7 @@ a bias value. A simple training approach will converge for linearly seperable da
 
 Classifiction of poisonous vs edible mushrooms.
 ```
-$ harvest-perceptron p 0.8 data/cat-cat/mushrooms/mushrooms.csv
+$ harvest-perceptron -label-true p data/cat-cat/mushrooms/mushrooms.csv
 train instances = 1637
 test  instances = 6487
 (T) total correct     ratio  | (F) total correct     ratio

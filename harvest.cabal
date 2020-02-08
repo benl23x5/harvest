@@ -34,6 +34,7 @@ executable harvest-finds
 executable harvest-perceptron
  hs-source-dirs: src/main/perceptron
  main-is:       Main.hs
+ other-modules: Config
  ghc-options:   -O2
  build-depends: base, text, containers, extra, comma, harvest, random
  extensions:
