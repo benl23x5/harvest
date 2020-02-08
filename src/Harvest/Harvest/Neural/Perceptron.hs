@@ -124,7 +124,7 @@ updateModel
         fDiff   = fTarget - fActual
 
         -- Learning rate.
-        fRate   = 0.0001
+        fRate   = 0.000001
 
         -- Update the bias.
         fBias'  = fBias + fRate * fDiff * 1
@@ -190,7 +190,9 @@ showExampleScore (ExampleScore bClass fScore bCorrect)
 -- | Holds quality metrics we get from scoring our examples.
 data ScoreMetrics
         = ScoreMetrics
-        { scoreTrueTotal        :: Int
+        { scoreTotal            :: Int
+        , scoreCorrect          :: Int
+        , scoreTrueTotal        :: Int
         , scoreTrueCorrect      :: Int
         , scoreFalseTotal       :: Int
         , scoreFalseCorrect     :: Int }
@@ -203,7 +205,9 @@ takeScoreMetrics ems
  = let  emsTrue         = filter exampleLabel ems
         emsFalse        = filter (not . exampleLabel) ems
    in   ScoreMetrics
-        { scoreTrueTotal        = length $ emsTrue
+        { scoreTotal            = length ems
+        , scoreCorrect          = length $ filter exampleCorrect ems
+        , scoreTrueTotal        = length $ emsTrue
         , scoreTrueCorrect      = length $ filter exampleCorrect emsTrue
         , scoreFalseTotal       = length $ emsFalse
         , scoreFalseCorrect     = length $ filter exampleCorrect emsFalse }
@@ -213,17 +217,23 @@ takeScoreMetrics ems
 scoreMetricsHeader :: Text
 scoreMetricsHeader
  = T.pack
- $ "(T) total correct     ratio  | (F) total correct     ratio"
+ $ "    total correct     ratio  | (T) total correct     ratio  | (F) total correct     ratio"
 
 
 -- | Show a `ScoreMetrics`.
 showScoreMetrics :: ScoreMetrics -> Text
-showScoreMetrics (ScoreMetrics iTrueTotal iTrueCorrect iFalseTotal iFalseCorrect)
+showScoreMetrics
+        (ScoreMetrics
+                iTotal iCorrect
+                iTrueTotal iTrueCorrect
+                iFalseTotal iFalseCorrect)
  = T.pack
- $ printf "   %6d  %6d  %7.6f       %6d  %6d  %7.6f"
+ $ printf "   %6d  %6d  %7.6f       %6d  %6d  %7.6f       %6d  %6d  %7.6f"
+        iTotal iCorrect fRatio
         iTrueTotal  iTrueCorrect  fRatioTrue
         iFalseTotal iFalseCorrect fRatioFalse
  where
+        fRatio      :: Float = fromIntegral iCorrect      / fromIntegral iTotal
         fRatioTrue  :: Float = fromIntegral iTrueCorrect  / fromIntegral iTrueTotal
         fRatioFalse :: Float = fromIntegral iFalseCorrect / fromIntegral iFalseTotal
 

@@ -14,7 +14,7 @@ that no attribute value is acceptable, then progressively weaken the
 hypothesis so that it covers all positive training examples.
 
 ```
- $ harvest-finds data/cat-cat/watersport.csv
+ $ harvest-finds data/cat-cat/watersport/watersport.csv
  Hypothesis [Exact "sunny",Exact "warm",Any,Exact "strong",Any,Any]
 ```
 
@@ -29,7 +29,7 @@ a bias value. A simple training approach will converge for linearly seperable da
 
 Classifiction of poisonous vs edible mushrooms.
 ```
-$ harvest-perceptron p 0.8 data/cat-cat/mushrooms.csv
+$ harvest-perceptron p 0.8 data/cat-cat/mushrooms/mushrooms.csv
 train instances = 1637
 test  instances = 6487
 (T) total correct     ratio  | (F) total correct     ratio

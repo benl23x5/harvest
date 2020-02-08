@@ -48,10 +48,12 @@ runClassify sLabelTrue fTestRatio lsRows
 
         -- Build list of all instances,
         --  where the category and features are named like
-        let insts = [ H.loadInstance lAttrs ssFeatures
+        let insts = [ H.loadInstance
+                        ssFeatureNames ssFeatureValues
                         (sClass == sLabelTrue)
                     | lsValues <- lsInstances
-                    , let sClass : ssFeatures = lsValues ]
+                    , let sClassName : ssFeatureNames  = lAttrs
+                    , let sClass     : ssFeatureValues = lsValues ]
 
         -- Collect the set of all features and write it out.
         let ssFeatures = Set.unions $ map H.instanceFeatures insts
