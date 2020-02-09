@@ -39,7 +39,7 @@ runMain config fileName
 ---------------------------------------------------------------------------------------------------
 -- Run the classifier.
 runClassify
-        :: Config
+        :: Config       -- ^ Configuration.
         -> [[Text]]     -- ^ Rows from the CSV file, first row is header.
         -> IO ()
 
@@ -51,84 +51,98 @@ runClassify config lsRows
         -- Split off header row which gives attribute names.
         let lAttrs : lsInstances = lsRows
 
+        -- Guess the sorts of each feature based on the values.
         let lsCols = transpose lsInstances
-        let _stClass : stFeatureSorts
-                = map H.guessSortOfFeature lsCols
+        let _stClass : stFeatureSorts = map H.guessSortOfFeature lsCols
 
-        -- Build list of all instances,
-        --  where the category and features are named like
-        let insts = [ H.loadInstance
+        -- Build list of all example instances.
+        let instsAll
+                = [ H.loadInstance
                         stFeatureSorts ssFeatureNames ssFeatureValues
-                        (sClass == sLabelTrue)
-                    | lsValues <- lsInstances
-                    , let sClassName : ssFeatureNames  = lAttrs
-                    , let sClass     : ssFeatureValues = lsValues ]
+                        (sClassValue == sLabelTrue)
+                   | lsValues <- lsInstances
+                   , let sClassName  : ssFeatureNames  = lAttrs
+                   , let sClassValue : ssFeatureValues = lsValues ]
 
-        -- Collect the set of all feature names and write it out.
-        let ssFeaturesCat = Set.unions $ map H.instanceCat insts
-        let ssFeaturesCon = Set.unions $ map (Set.fromList . Map.keys . H.instanceCon) insts
+        -- Write out feature names if we were asked.
+        let ssFeaturesCat = Set.unions $ map H.instanceCat instsAll
+        let ssFeaturesCon = Set.unions $ map (Set.fromList . Map.keys . H.instanceCon) instsAll
         let ssFeatures    = Set.union ssFeaturesCat ssFeaturesCon
+        (case configOutFeatures config of
+          Nothing       -> return ()
+          Just filePath -> T.writeFile filePath $ H.showFeaturesOfInstances instsAll)
 
-        T.writeFile "output/features.csv"
-         $ H.showFeaturesOfInstances insts
-
-        -- Split the example instances into the training and holdout sets
+        -- Split the example instances into the training and testing sets.
         let (instsTest, instsTrain)
-                = H.splitRatio 23 fTestRatio insts
+                = H.splitRatio 23 fTestRatio instsAll
 
-        putStrLn $ printf "train instances = %d" (length instsTrain)
-        putStrLn $ printf "test  instances = %d" (length instsTest)
+        putStrLn $ printf "* total examples = %d" (length instsAll)
+        putStrLn $ printf "* train examples = %d" (length instsTrain)
+        putStrLn $ printf "* test  examples = %d" (length instsTest)
 
         -- Initialize the model to have small random weights.
         let modelInit
                 = H.initModel 42
                         (configInitWeight config)
-                        ssFeaturesCat
-                        ssFeaturesCon
+                        ssFeaturesCat ssFeaturesCon
 
         -- Enter the training loop.
-        T.putStrLn
-         $ " iter" <> H.scoreMetricsHeader
-        loopTrain
-                (configLearnRate config)
-                (configIterations config)
+        T.putStrLn ""
+        T.putStrLn $ " iter" <> H.scoreMetricsHeader
+
+        (modelFinal, scoresFinal)
+         <- loopTrain config
                 instsTrain instsTest modelInit
 
+        (case configOutModel config of
+          Nothing   -> return ()
+          Just path -> T.writeFile path $ H.showModel modelFinal)
+
+        (case configOutScores config of
+          Nothing   -> return ()
+          Just path -> T.writeFile path
+                     $ T.unlines $ map H.showExampleScore $ scoresFinal)
+
+        return ()
 
 ---------------------------------------------------------------------------------------------------
 -- | Train an initial model.
 --     At each step we update the model using all the training instances,
 --     and print out the current performance on the test instances.
 loopTrain
-        :: Float        -- ^ Learning rate
-        -> Int          -- ^ Number of training iterations.
+        :: Config
         -> [H.Instance] -- ^ Instances to use for training.
         -> [H.Instance] -- ^ Instances to use for testing.
         -> H.Model      -- ^ Current model.
-        -> IO ()
+        -> IO (H.Model, [H.ExampleScore])
 
-loopTrain fLearnRate iIterMax instsTrain instsTest model_
+loopTrain config instsTrain instsTest model_
  = loop 0 model_
  where
   loop !i !model
-   | i > iIterMax = return ()
-   | otherwise
-   = do
-        -- Write out the current model.
-        T.writeFile (printf "output/model-%04d.txt" i)
-         $ H.showModel model
+   = do -- Write out the intermediate model, if we were asked for it.
+        (case configOutModelPath config of
+          Nothing   -> return ()
+          Just path -> T.writeFile (printf (path ++ "/model-%06d.txt") i)
+                     $ H.showModel model)
 
         -- Score the test instances using the current model and write them out.
         let exScores = map (H.makeExampleScore model) instsTest
-        T.writeFile (printf "output/score-%04d.txt" i)
-         $ T.unlines $ map H.showExampleScore $ exScores
+        (case configOutScoresPath config of
+          Nothing   -> return ()
+          Just path -> T.writeFile (printf (path ++ "/scores-%06d.txt") i)
+                     $ T.unlines $ map H.showExampleScore $ exScores)
 
         -- Print score metrics to console.
-        let metrics  = H.takeScoreMetrics exScores
-        T.putStrLn
-         $  (T.pack $ printf "% 5d" (iIterMax - i))
-         <> H.showScoreMetrics metrics
+        let metrics    = H.takeScoreMetrics exScores
+        let iItersLeft = configIterations config - i
+        T.putStrLn   $  (T.pack $ printf "% 5d" iItersLeft)
+                     <> H.showScoreMetrics metrics
 
         -- Update the model.
-        let model' = foldl' (H.updateModel fLearnRate) model instsTrain
-        loop (i + 1) model'
+        let model'   = foldl'   (H.updateModel (configLearnRate config))
+                                model instsTrain
+
+        if iItersLeft == 0
+         then return (model', exScores)
+         else loop (i + 1) model'

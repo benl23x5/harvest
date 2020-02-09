@@ -97,9 +97,9 @@ showFeaturesOfInstances insts
                 $ map (Set.fromList . Map.keys . instanceCon) insts
 
    in   T.unlines $ concat
-         [ ["sort,name"]
-         , [ "cat," <> txName | txName <- ssCat ]
-         , [ "con," <> txName | txName <- ssCon ] ]
+         [ [ "sort name"]
+         , [ "cat  " <> txName | txName <- ssCat ]
+         , [ "con  " <> txName | txName <- ssCon ] ]
 
 
 ---------------------------------------------------------------------------------------------------
@@ -202,9 +202,8 @@ updateModel
 showModel :: Model -> Text
 showModel (Model fBias mpWeightCat mpWeightCon)
  = T.pack $ unlines $ concat
- [ [  printf "%-32s" ("bias" :: Text)
+ [ [  printf "%-32s" ("_bias" :: Text)
    <> printf "% 14.12f" fBias  ]
- , [""]
  , [  printf "%-32s" sFeature
    <> printf "% 14.12f" fWeight
    | (sFeature, fWeight) <- Map.toList mpWeightCat ]

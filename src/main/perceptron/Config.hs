@@ -12,7 +12,12 @@ data Config
         , configTestRatio       :: Float
         , configLearnRate       :: Float
         , configInitWeight      :: Float
-        , configIterations      :: Int }
+        , configIterations      :: Int
+        , configOutFeatures     :: Maybe FilePath
+        , configOutModel        :: Maybe FilePath
+        , configOutModelPath    :: Maybe FilePath
+        , configOutScores       :: Maybe FilePath
+        , configOutScoresPath   :: Maybe FilePath }
         deriving Show
 
 
@@ -24,7 +29,13 @@ configDefault
         , configTestRatio       = 0.2
         , configLearnRate       = 0.00001
         , configInitWeight      = 0.001
-        , configIterations      = 10 }
+        , configIterations      = 10
+        , configOutFeatures     = Nothing
+        , configOutModel        = Nothing
+        , configOutModelPath    = Nothing
+        , configOutScores       = Nothing
+        , configOutScoresPath   = Nothing }
+
 
 
 parseArgs :: [String] -> Config -> IO Config
@@ -55,6 +66,26 @@ parseArgs ("-iterations" : sIter : rest) config
  | Just iIter <- readMaybe sIter
  = parseArgs rest
  $ config { configIterations = iIter }
+
+parseArgs ("-out-features" : sFile : rest) config
+ = parseArgs rest
+ $ config { configOutFeatures = Just sFile }
+
+parseArgs ("-out-model" : sFile : rest) config
+ = parseArgs rest
+ $ config { configOutModel = Just sFile }
+
+parseArgs ("-out-model-path" : sFile : rest) config
+ = parseArgs rest
+ $ config { configOutModelPath = Just sFile }
+
+parseArgs ("-out-scores" : sFile : rest) config
+ = parseArgs rest
+ $ config { configOutScores = Just sFile }
+
+parseArgs ("-out-scores-path" : sFile : rest) config
+ = parseArgs rest
+ $ config { configOutScoresPath = Just sFile }
 
 parseArgs (fileName@(c : _) : rest) config
  | c /= '-'
