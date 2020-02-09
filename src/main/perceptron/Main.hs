@@ -29,7 +29,8 @@ main
          _ -> error "usage: harvest-perceptron [FLAGS] FILE.csv"
 
 runMain config fileName
- = do   file    <- T.readFile fileName
+ = do   file_    <- T.readFile fileName
+        let file =  T.filter (/= '\r') file_
         case Comma.comma file of
          Left err  -> error err
          Right ls  -> runClassify config ls
@@ -50,20 +51,32 @@ runClassify config lsRows
         -- Split off header row which gives attribute names.
         let lAttrs : lsInstances = lsRows
 
+        let lsCols = transpose lsInstances
+        let _stClass : stFeatureSorts
+                = map H.guessSortOfAttr lsCols
+
         -- Build list of all instances,
         --  where the category and features are named like
         let insts = [ H.loadInstance
-                        ssFeatureNames ssFeatureValues
+                        stFeatureSorts ssFeatureNames ssFeatureValues
                         (sClass == sLabelTrue)
                     | lsValues <- lsInstances
                     , let sClassName : ssFeatureNames  = lAttrs
                     , let sClass     : ssFeatureValues = lsValues ]
 
         -- Collect the set of all features and write it out.
-        let ssFeatures = Set.unions $ map H.instanceFeatures insts
+        let ssFeatures = Set.unions $ map H.instanceCat insts
         T.writeFile "output/features.csv"
-         $ T.unlines
-         $ ("feature" : Set.toList ssFeatures)
+         $  T.unlines
+         $  ["sort,name"]
+         ++ [ "cat," <> txName
+            | txName
+                <- Set.toList $ Set.unions
+                $  map H.instanceCat insts ]
+         ++ [ "con," <> txName
+            | txName
+                <- Set.toList $ Set.unions
+                $  map (Set.fromList . Map.keys . H.instanceCon) insts ]
 
         -- Split the example instances into the training and holdout sets
         let (instsTest, instsTrain)

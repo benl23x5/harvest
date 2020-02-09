@@ -4,12 +4,15 @@ import Data.Text                        (Text)
 import Data.Set                         (Set)
 import Data.Map                         (Map)
 import Data.Either
+import Data.Maybe
 import Data.List
 import Data.List.Extra
 import Text.Printf
+import Text.Read
 import qualified System.Environment     as System
 import qualified System.Random          as Random
 import qualified Text.Comma             as Comma
+import qualified Data.Char              as Char
 import qualified Data.Map.Strict        as Map
 import qualified Data.Set               as Set
 import qualified Data.Text              as T
@@ -17,36 +20,66 @@ import qualified Data.Text.IO           as T
 
 
 ---------------------------------------------------------------------------------------------------
+data Sort
+        = Cat   -- ^ Categorical.
+        | Con   -- ^ Continuous.
+        deriving Show
+
+looksContinuous :: Text -> Bool
+looksContinuous tx
+ = and [ Char.isDigit c || c == '.' | c <- T.unpack tx ]
+
+guessSortOfAttr :: [Text] -> Sort
+guessSortOfAttr txs
+ = if all looksContinuous txs
+        then Con
+        else Cat
+
+
+---------------------------------------------------------------------------------------------------
 -- | Data instance where boolean features in the set are true,
 --   and all others are assumed to be false.
 data Instance
         = Instance
-        { instanceClass         :: !Bool
-        , instanceFeatures      :: !(Set Text) }
+        { instanceClass :: !Bool
+        , instanceCat   :: !(Set Text)
+        , instanceCon   :: !(Map Text Float) }
         deriving Show
 
 
 -- | Load instance data.
 loadInstance
-        :: [Text]       -- ^ Names of all attributes.
-        -> [Text]       -- ^ Values for each attribute.
+        :: [Sort]       -- ^ Sorts of each feature.
+        -> [Text]       -- ^ Names of each feature.
+        -> [Text]       -- ^ Values for each feature.
         -> Bool         -- ^ Label classification.
         -> Instance
 
-loadInstance ssNames ssValues bClass
- = Instance bClass
- $ Set.fromList
+loadInstance stSorts ssNames ssValues bClass
+ = Instance
+ { instanceClass        = bClass
+
+ , instanceCat
+        = Set.fromList
         [ sName <> "=" <> sValue
-        | (sName, sValue) <- zip ssNames ssValues
+        | ((sName, Cat), sValue) <- zip (zip ssNames stSorts) ssValues
         , sValue /= "_" ]
+
+ , instanceCon
+        = Map.fromList $ catMaybes
+        [ case readMaybe $ T.unpack sValue of
+                Just fValue     -> Just (sName, fValue)
+                _               -> Nothing
+        | ((sName, Con), sValue) <- zip (zip ssNames stSorts) ssValues ]
+ }
 
 
 -- | Show an `Instance`.
 showInstance :: Instance -> Text
-showInstance (Instance bClass stFeatures)
+showInstance (Instance bClass fsCat _fsCon)
  =  (T.pack $ show bClass)
  <> " | "
- <> T.intercalate " " (Set.toList stFeatures)
+ <> T.intercalate " " (Set.toList fsCat)
 
 
 -- | Split a list of things based on the given ratio.
@@ -97,9 +130,9 @@ initModel iSeed fInitWeight ssFeatures
 -- | Score a data instance using the given model.
 scoreInstance :: Model -> Instance -> Float
 scoreInstance (Model fBias mpWeights)
-              (Instance sClass stFeatures)
+              (Instance sClass fsCat _fsCon)
  = fBias
- + sum [ fWeight * indicate (Set.member sFeature stFeatures)
+ + sum [ fWeight * indicate (Set.member sFeature fsCat)
        | (sFeature, fWeight) <- Map.toList mpWeights ]
 
 
@@ -114,7 +147,7 @@ updateModel :: Float -> Model -> Instance -> Model
 updateModel
         fLearnRate
         model@(Model fBias mpWeights)
-         inst@(Instance bClass stFeatures)
+         inst@(Instance bClass fsCat _fsCon)
  = let
         -- The target score for this instance.
         fTarget = indicate bClass
@@ -131,7 +164,7 @@ updateModel
         -- Update the feature weights.
         mpWeights'
          = flip Map.mapWithKey mpWeights
-         $ \k w -> let xi = if Set.member k stFeatures then 1 else -1
+         $ \k w -> let xi = if Set.member k fsCat then 1 else -1
                        wd = fLearnRate * fDiff * xi
                    in  w  + wd
 
@@ -162,7 +195,7 @@ data ExampleScore
 
 -- | Score an example and check if the prediction was correct.
 makeExampleScore :: Model -> Instance -> ExampleScore
-makeExampleScore model inst@(Instance bClass _fs)
+makeExampleScore model inst@(Instance bClass _fsCat _fsCon)
  = let  fScore  = scoreInstance model inst
 
         bCorrect
