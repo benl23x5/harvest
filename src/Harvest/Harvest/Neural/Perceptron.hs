@@ -102,7 +102,8 @@ splitRatio iSeed fRatio xs
 data Model
         = Model
         { modelBias             :: !Float
-        , modelWeights          :: !(Map Text Float) }
+        , modelWeightsCat       :: !(Map Text Float)
+        , modelWeightsCon       :: !(Map Text Float) }
         deriving Show
 
 
@@ -110,30 +111,43 @@ data Model
 initModel
         :: Int          -- ^ Random seed.
         -> Float        -- ^ Initial weight magnitude
-        -> Set Text     -- ^ Set of all feature values.
+        -> Set Text     -- ^ Set of all categorical feature names.
+        -> Set Text     -- ^ Set of all continuous features names.
         -> Model        -- ^ Initial model with small values for weights.
 
-initModel iSeed fInitWeight ssFeatures
- = let  rgen      = Random.mkStdGen iSeed
-        nFeatures = Set.size ssFeatures
+initModel iSeed fInitWeight ssFeaturesCat ssFeaturesCon
+ = let  rgen                = Random.mkStdGen iSeed
+        (rgenBias, rgen')   = Random.split rgen
+        (rgenCat,  rgenCon) = Random.split rgen'
+        f2Init              = (-fInitWeight, fInitWeight)
 
-        fBias : fsWeights
-         = take (1 + nFeatures)
-         $ Random.randomRs (-fInitWeight, fInitWeight) rgen
+  in    Model
+        { modelBias
+                = fst $ Random.randomR f2Init rgenBias
 
-        mpWeights = Map.fromList $ zip (Set.toList ssFeatures) fsWeights
+        , modelWeightsCat
+                = Map.fromList
+                $ zip  (Set.toList ssFeaturesCat)
+                $ take (Set.size   ssFeaturesCat)
+                $ Random.randomRs f2Init rgenCat
 
-  in    Model   { modelBias     = fBias
-                , modelWeights  = mpWeights }
+        , modelWeightsCon
+                = Map.fromList
+                $ zip  (Set.toList ssFeaturesCon)
+                $ take (Set.size   ssFeaturesCon)
+                $ Random.randomRs f2Init rgenCon }
 
 
 -- | Score a data instance using the given model.
 scoreInstance :: Model -> Instance -> Float
-scoreInstance (Model fBias mpWeights)
-              (Instance sClass fsCat _fsCon)
+scoreInstance (Model fBias mpWeightCat mpWeightCon)
+              (Instance sClass fsCat fsCon)
  = fBias
  + sum [ fWeight * indicate (Set.member sFeature fsCat)
-       | (sFeature, fWeight) <- Map.toList mpWeights ]
+       | (sFeature, fWeight) <- Map.toList mpWeightCat ]
+ + sum [ fWeight * fValue
+       | (sFeature, fWeight) <- Map.toList mpWeightCon
+       , let Just fValue     =  Map.lookup sFeature fsCon ]
 
 
 -- | Classify an instance using the given model.
@@ -146,8 +160,8 @@ classifyInstance model inst
 updateModel :: Float -> Model -> Instance -> Model
 updateModel
         fLearnRate
-        model@(Model fBias mpWeights)
-         inst@(Instance bClass fsCat _fsCon)
+        model@(Model fBias mpWeightCat mpWeightCon)
+         inst@(Instance bClass fsCat fsCon)
  = let
         -- The target score for this instance.
         fTarget = indicate bClass
@@ -162,25 +176,36 @@ updateModel
         fBias'  = fBias + fLearnRate * fDiff * 1
 
         -- Update the feature weights.
-        mpWeights'
-         = flip Map.mapWithKey mpWeights
+        mpWeightCat'
+         = flip Map.mapWithKey mpWeightCat
          $ \k w -> let xi = if Set.member k fsCat then 1 else -1
                        wd = fLearnRate * fDiff * xi
                    in  w  + wd
 
-   in   Model fBias' mpWeights'
+        mpWeightCon'
+         = flip Map.mapWithKey mpWeightCon
+         $ \k w -> let Just xi = Map.lookup k fsCon
+                       wd = fLearnRate * fDiff * xi
+                   in w + wd
+
+   in   Model fBias' mpWeightCat' mpWeightCon'
 
 
 -- | Show a `Model`.
 showModel :: Model -> Text
-showModel (Model fBias mpWeights)
- = T.pack $ unlines
- $ (  printf "%-32s" ("bias" :: Text)
-   <> printf "% 14.12f" fBias )
- : ""
- : [  printf "%-32s" sFeature
+showModel (Model fBias mpWeightCat mpWeightCon)
+ = T.pack $ unlines $ concat
+ [ [  printf "%-32s" ("bias" :: Text)
+   <> printf "% 14.12f" fBias  ]
+ , [""]
+ , [  printf "%-32s" sFeature
    <> printf "% 14.12f" fWeight
-   | (sFeature, fWeight) <- Map.toList mpWeights ]
+   | (sFeature, fWeight) <- Map.toList mpWeightCat ]
+ , [  printf "%-32s" sFeature
+   <> printf "% 14.12f" fWeight
+   | (sFeature, fWeight) <- Map.toList mpWeightCon ] ]
+
+
 
 
 ---------------------------------------------------------------------------------------------------

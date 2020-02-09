@@ -64,8 +64,11 @@ runClassify config lsRows
                     , let sClassName : ssFeatureNames  = lAttrs
                     , let sClass     : ssFeatureValues = lsValues ]
 
-        -- Collect the set of all features and write it out.
-        let ssFeatures = Set.unions $ map H.instanceCat insts
+        -- Collect the set of all feature names and write it out.
+        let ssFeaturesCat = Set.unions $ map H.instanceCat insts
+        let ssFeaturesCon = Set.unions $ map (Set.fromList . Map.keys . H.instanceCon) insts
+        let ssFeatures    = Set.union ssFeaturesCat ssFeaturesCon
+
         T.writeFile "output/features.csv"
          $  T.unlines
          $  ["sort,name"]
@@ -87,7 +90,10 @@ runClassify config lsRows
 
         -- Initialize the model to have small random weights.
         let modelInit
-                = H.initModel 42 (configInitWeight config) ssFeatures
+                = H.initModel 42
+                        (configInitWeight config)
+                        ssFeaturesCat
+                        ssFeaturesCon
 
         -- Enter the training loop.
         T.putStrLn
