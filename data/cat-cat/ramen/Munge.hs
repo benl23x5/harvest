@@ -87,8 +87,8 @@ mungeLine ssWords (sIx : sManuf : sName : sPack : sCountry : sRating : _)
                    "" -> "unknown"
                    _  -> sPack
                 : [ if Set.member w ssName
-                        then "O"
-                        else "-"
+                        then "o"
+                        else "_"
                   | w <- ssWords])
 
  | otherwise = Nothing

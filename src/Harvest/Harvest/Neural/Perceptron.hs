@@ -33,12 +33,12 @@ loadInstance
         -> Bool         -- ^ Label classification.
         -> Instance
 
-loadInstance ssNames ssValue bClass
+loadInstance ssNames ssValues bClass
  = Instance bClass
-        $ Set.fromList
+ $ Set.fromList
         [ sName <> "=" <> sValue
-        | sName  <- ssNames
-        | sValue <- ssValue ]
+        | (sName, sValue) <- zip ssNames ssValues
+        , sValue /= "_" ]
 
 
 -- | Show an `Instance`.
