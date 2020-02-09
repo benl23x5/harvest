@@ -35,7 +35,7 @@ $ harvest-perceptron -label-true Bream \
         -out-features output/_features.ssv \
         -out-model    output/_model.ssv \
         -out-scores   output/_scores.ssv \
-        data/cat-con/fishmarket.csv
+        data/cat-con/fishmarket/fishmarket.csv
 ...
     2       81      78  0.962963           13      13  1.000000           68      65  0.955882
     1       81      78  0.962963           13      13  1.000000           68      65  0.955882
@@ -48,7 +48,7 @@ $ harvest-perceptron -label-true Perch \
         -out-features output/_features.ssv \
         -out-model    output/_model.ssv \
         -out-scores   output/_scores.ssv \
-        data/cat-con/fishmarket.csv
+        data/cat-con/fishmarket/fishmarket.csv
 ...
     4       81      56  0.691358           31       7  0.225806           50      49  0.980000
     3       81      60  0.740741           31      23  0.741936           50      37  0.740000
