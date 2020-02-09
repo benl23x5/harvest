@@ -1,3 +1,4 @@
 .ghc.*
 dist*
 output/*
+.ipynb_checkpoints
