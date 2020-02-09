@@ -20,17 +20,22 @@ import qualified Data.Text.IO           as T
 
 
 ---------------------------------------------------------------------------------------------------
+-- | Sort of feature.
 data Sort
         = Cat   -- ^ Categorical.
         | Con   -- ^ Continuous.
         deriving Show
 
+-- | Check if a feature looks continuous, that is,
+--   it looks like a number with just digits and maybe a decimal point.
 looksContinuous :: Text -> Bool
 looksContinuous tx
  = and [ Char.isDigit c || c == '.' | c <- T.unpack tx ]
 
-guessSortOfAttr :: [Text] -> Sort
-guessSortOfAttr txs
+
+-- | Guess the sort of a feature based on its values.
+guessSortOfFeature :: [Text] -> Sort
+guessSortOfFeature txs
  = if all looksContinuous txs
         then Con
         else Cat
@@ -82,17 +87,19 @@ showInstance (Instance bClass fsCat _fsCon)
  <> T.intercalate " " (Set.toList fsCat)
 
 
--- | Split a list of things based on the given ratio.
-splitRatio :: Int -> Float -> [a] -> ([a], [a])
-splitRatio iSeed fRatio xs
- = let  rgen    = Random.mkStdGen iSeed
+-- | Make a table showing the names of all features used in the given instances,
+showFeaturesOfInstances :: [Instance] -> Text
+showFeaturesOfInstances insts
+ = let  ssCat   = Set.toList $ Set.unions
+                $ map instanceCat insts
 
-        rs :: [Float]
-                = take (length xs)
-                $ Random.randomRs (0, 1) rgen
+        ssCon   = Set.toList $ Set.unions
+                $ map (Set.fromList . Map.keys . instanceCon) insts
 
-        es      = zipWith (\r x -> if r <= fRatio then Left x else Right x) rs xs
-   in   partitionEithers es
+   in   T.unlines $ concat
+         [ ["sort,name"]
+         , [ "cat," <> txName | txName <- ssCat ]
+         , [ "con," <> txName | txName <- ssCon ] ]
 
 
 ---------------------------------------------------------------------------------------------------
@@ -302,3 +309,14 @@ indicate True  = 1
 indicate False = -1
 
 
+-- | Split a list of things based on the given ratio.
+splitRatio :: Int -> Float -> [a] -> ([a], [a])
+splitRatio iSeed fRatio xs
+ = let  rgen    = Random.mkStdGen iSeed
+
+        rs :: [Float]
+                = take (length xs)
+                $ Random.randomRs (0, 1) rgen
+
+        es      = zipWith (\r x -> if r <= fRatio then Left x else Right x) rs xs
+   in   partitionEithers es

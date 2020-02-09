@@ -53,7 +53,7 @@ runClassify config lsRows
 
         let lsCols = transpose lsInstances
         let _stClass : stFeatureSorts
-                = map H.guessSortOfAttr lsCols
+                = map H.guessSortOfFeature lsCols
 
         -- Build list of all instances,
         --  where the category and features are named like
@@ -70,16 +70,7 @@ runClassify config lsRows
         let ssFeatures    = Set.union ssFeaturesCat ssFeaturesCon
 
         T.writeFile "output/features.csv"
-         $  T.unlines
-         $  ["sort,name"]
-         ++ [ "cat," <> txName
-            | txName
-                <- Set.toList $ Set.unions
-                $  map H.instanceCat insts ]
-         ++ [ "con," <> txName
-            | txName
-                <- Set.toList $ Set.unions
-                $  map (Set.fromList . Map.keys . H.instanceCon) insts ]
+         $ H.showFeaturesOfInstances insts
 
         -- Split the example instances into the training and holdout sets
         let (instsTest, instsTrain)
@@ -127,7 +118,7 @@ loopTrain fLearnRate iIterMax instsTrain instsTest model_
         T.writeFile (printf "output/model-%04d.txt" i)
          $ H.showModel model
 
-        -- Score the holdout instances using the current model and write them out.
+        -- Score the test instances using the current model and write them out.
         let exScores = map (H.makeExampleScore model) instsTest
         T.writeFile (printf "output/score-%04d.txt" i)
          $ T.unlines $ map H.showExampleScore $ exScores
